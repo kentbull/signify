@@ -134,15 +134,15 @@ The server stores the encrypted private key material for signing and rotation ke
 
 
 ### Group Keys
-The Group Key algorithm is a special key generation algorith for distributed group multisig AIDs that does not manage and keys at all.  Instead this algoritm allows for the specification of an AID of one of the other three types to be the "local" participant in a distributed group multisig AID.  
+The Group Key algorithm is a special key generation algorith for distributed group multisig AIDs that does not manage keys at all.  Instead this algorithm allows for the specification of an AID of one of the other three types (Salty, Randy, Extern) to be the "local" participant in a distributed group multisig AID.  
 
-All signing operations must be performed on the Signify Client on behalf of the "local" AID for this Signify Client indexed based on the local AID's location in both the signing key list and the rotation key list.  
+All signing operations must be performed on the Signify Client on behalf of the "local" AID (Agent AID) for this Signify Client indexed based on the local AID's location in both the signing key list and the rotation key list.  
 
 
 ### HSM Keys (Experimental)
 The SignifyPy Signify Client defines an experimental interface for declaring external modules that can be used as Signify HSM Integration Modules to allow all key generation and event signing to occur in an external Hardware Security Module (HSM).  
 
-Two sample implementations have been defined to date, one using the Google KSM and one using a Trezure One external HSM.
+Two sample implementations have been defined to date, one using the Google KSM and one using a Trezor One external HSM.
 
 The following psuedo Python class represents the current, experimental interface a SHIM has to implememnt to work with SignifyPy.  It is anticipated that each Signify Client implementation defines a similar interface.
 
@@ -200,15 +200,15 @@ To perform a passcode rotation, the Signify Client requires both old and new pas
 2. Perform a partial rotation of the Client AID as described below.
 3. Decrypt all salts with X25519 key from old passcode for Salty Keys, validate them against current public keys, encrypt with X25519 key from new passcode
 4. Decrypt all keys with X25519 key from old passcode for Randy Keys, validate them against current public keys, encrypt with X25519 key from new passcode
-5. Send all rotation event and all recrypted material in a POST request to the agent on `/agent/<Client AID>`
+5. Send the rotation event and all re-encrypted material in a POST request to the agent on `/agent/<Client AID>`
 
 
-### Partial Client AID Rotaion in Support of Passcode Rotation
+### Partial Client AID Rotation in Support of Passcode Rotation
 To provide post-quantum secure passcode recovery, a passcode recovery must be accompanied by partial rotation of the Client AID. This partial rotation is possible because the user will have to provide both old and new passcodes to initiate the process.
 
-The partial rotation of the Client AID is accomplished by using the old passcode to regenerate the the prior rotation key pair called `R0` from the latest establishment event.  In addition, two new key pairs are generated from the new passocde, one used for signing authority (S0) and one used for rotation authority (R1) in the new rotation event.
+The partial rotation of the Client AID is accomplished by using the old passcode to regenerate the the prior rotation key pair called `R0` from the latest establishment event.  In addition, two new key pairs are generated from the new passocde, one used for signing authority (`S0`) and one used for rotation authority (`R1`) in the new rotation event.
 
-The public key for `S0` is used as the first signing key in the new rotation event; it is giving a fractionally weighted threshold of "1".  The public key for `R0` is used as the second signing key in the new rotation event; it is giving a fractionally weighted threshold of "0".  A Blake3 has is created of the public key for `R1` and is used as the next rotation key commitment.
+The public key for `S0` is used as the first signing key in the new rotation event; it is giving a fractionally weighted threshold of "1".  The public key for `R0` is used as the second signing key in the new rotation event; it is giving a fractionally weighted threshold of "0".  A Blake3 digest is created of the public key for `R1` and is used as the next rotation key commitment.
 
 The rotation event is signed with the private keys of both `S0` and `R0`.  An example of a partial rotation event of the Client AID from above follows with its signatures:
 
@@ -252,7 +252,7 @@ The first signature satisfies the current signing threshold and has only one ind
 The following steps are followed to accept the passcode rotation:
 
 1. Verify and accept the Client AID rotation
-2. Verify the signature on the request against the NEW signing key of the Client AID
+2. Verify the signature on the request against the NEW signing key (`S0`) of the Client AID
 3. Save encrypted old passcode
 4. Update all Salty Key encrypted salts
 5. Update all Randy Key encrypted keys
@@ -271,7 +271,7 @@ To perform a passcode rotation recovery, the Signify Client requires only the ne
 4. For any salt still encrypted with the old passcode, encrypt with X25519 key from new passcode 
 5. Attempt to decrypt all keys with the X25519 keys from both the old and new passcode for Randy Keys
 6. Validate them against current public keys and for any key still encrypted with the old passcode, encrypt with X25519 key from new passcode
-7. Send all rotation event and all recrypted material in a POST request to the agent on `/agent/<Client AID>`
+7. Send the rotation event and all re-encrypted material in a POST request to the agent on `/agent/<Client AID>`
 
 ## Signify Request/Response Authentication
 Signify clients must sign all requests to the KERIA Admin Interface using the latest signing key of the Client AID and must expect all responses from the KERIA service be signed by the latest signing key of the Agent AID.  Both request and response signing rely on the same set of HTTP headers to accomplish request/response signing.
@@ -280,7 +280,12 @@ Signify clients must sign all requests to the KERIA Admin Interface using the la
 Document `Signify-Resource` and `Signify-Timestamp` headers here.
 
 ### Signature Input Header
-Document the `Signagture-Input` header here with link to https://httpwg.org/http-extensions/draft-ietf-httpbis-message-signatures.html
+Document the `Signagture-Input` header here with link to [IETF HTTP Message Signatures (2023-07-23)][HTTP_MSG_SIGS] or the more reader-friendly version [here][HTTP_MSG_SIGS_HTML]
 
 ### Signature Header
-Docuemnt the signing method and `Signature` header.
+Document the signing method and `Signature` header.
+
+
+
+[HTTP_MSG_SIGS]: https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-message-signatures
+[HTTP_MSG_SIGS_HTML]: https://www.rfc-editor.org/rfc/rfc9421.html
